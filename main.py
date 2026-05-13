@@ -12,10 +12,8 @@ from automation_server_client import (
     WorkItemError,
     WorkItemStatus
 )
-
-# DIN EGEN FUNKTION TIL STANDARDISERING AF DATA
-# Denne bruges typisk i QUEUE-MODE (producer)
-
+from q_prisme365_api.advis import get_advis
+from data_til_queue import build_queue_rows_from_advis
 from q_haderslev_vbo.automation_server.ats_update_item_data import update_item_data
 
 # ---------------------------------------------------------------------------
@@ -48,47 +46,32 @@ async def populate_queue(workqueue: Workqueue):
     logger = logging.getLogger(__name__)
     logger.info("Populate queue mode started")
 
-    # -----------------------------------------------------------------------
-    # EKSEMPEL: FIKTIVE TESTDATA (det er her dine test-items hører til)
-    # Disse data kan komme fra:
-    #   - Excel
-    #   - CSV
-    #   - API
-    #   - Test-hardcodet data (som her)
-    # -----------------------------------------------------------------------
-    raw_items = [
-        {"cpr": "1234567891", "type": "adresseopslag", "note": "Test-item 1"},
-        {"cpr": "1111111111", "type": "fødselsdato-check", "note": "Test-item 2"},
-        {"cpr": "2222222222", "type": "myndighedsopslag", "note": "Test-item 3"},
-        {"cpr": "3333333333", "type": "journalopslag", "note": "Test-item 4"},
-    ]
 
-    # -----------------------------------------------------------------------
-    # Her standardiserer vi data vha. din egen funktion
-    # -----------------------------------------------------------------------
-    for raw_item in raw_items:
+    advis_data = get_advis(
+        advice_text="PSRM*",
+        handled=False,
+        top=10000
+    )
+
+    # Al logik ligger nu i én funktion
+    queue_rows = build_queue_rows_from_advis(advis_data)
+
+    for row in queue_rows:
         data_json = {}
 
-        # Her bliver flad input-data konverteret til korrekt item-struktur
         update_item_data(
             data_json,
-            data_updates=raw_item,
-            log_entry={
-                "message": "Item standardiseret",
-                "level": "INFO"
-            }
+            box_updates=row,
+            #log_entry={"message": "Item standardiseret", "level": "INFO"}
         )
 
-        # -------------------------------------------------------------------
-        # Tilføj item til queue
-        # reference bruges typisk til sporbarhed (fx CPR, sagsnr osv.) ret derfor nedenstående "cpr" til det der skal vises i ATS UI'et
-        # -------------------------------------------------------------------
         workqueue.add_item(
             data=data_json,
-            reference=data_json["data"]["cpr"]
+            reference=data_json["box"]["Id"]
         )
 
-    logger.info(f"{len(raw_items)} items tilføjet til workqueue")
+
+    logger.info(f"{len(advis_data)} items tilføjet til workqueue")
 
 
 # ---------------------------------------------------------------------------
@@ -123,7 +106,7 @@ async def process_workqueue(workqueue: Workqueue):
                 pprint(item.data)
 
                 # --- Indsæt din proceskode her --- eller brug behandel_page
-                behandel_page() #Filen behandl.py
+                behandel_page(item, ) #Filen behandl.py
 
 
 
@@ -131,8 +114,8 @@ async def process_workqueue(workqueue: Workqueue):
                 update_item_data(
                     data,
                     status_updates={
-                        "status": "Manuel",
-                        "status_kode": "BORGER_UDENFOR_SCOPE" 
+                        "status": "Completed",
+                        "status_kode": "Advis er nu behandlet" 
                     },
                 )
 
@@ -189,7 +172,7 @@ if __name__ == "__main__":
         # workqueue.clear_workqueue(WorkItemStatus.NEW)
         # ---------------------------------------------------------------
         workqueue.clear_workqueue(WorkItemStatus.NEW)
-
+        
         asyncio.run(populate_queue(workqueue))
         sys.exit(0)
 

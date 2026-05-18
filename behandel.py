@@ -11,9 +11,6 @@ def behandel_page(item):
 
     update_item_data(
         data,
-        state_updates={
-            "State": "Advis behandlet i Prisme",
-        },
-    )
-    item.update(data) #update data.
-                
+        state="Advis behandlet i Prisme",
+        item=item
+    )              

@@ -62,7 +62,7 @@ async def populate_queue(workqueue: Workqueue):
         update_item_data(
             data_json,
             box_updates=row,
-            #log_entry={"message": "Item standardiseret", "level": "INFO"}
+            update=False
         )
 
         workqueue.add_item(
@@ -113,12 +113,10 @@ async def process_workqueue(workqueue: Workqueue):
                 #update_item_data er din egen funktion som du kan bruge til at opdatere item data og logge samtidig. Den er typisk nyttig i process
                 update_item_data(
                     data,
-                    status_updates={
-                        "status": "Completed",
-                        "status_kode": "Advis er nu behandlet" 
-                    },
+                    status="Completed",
+                    status_kode="Advis er nu behandlet" 
                 )
-
+                
                 # Hvis alt er OK, så bruges status fra item data. Hvis intet i item data så bliver message blot "Completed"
 
                 item.update(data) #update data.

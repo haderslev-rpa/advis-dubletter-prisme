@@ -114,7 +114,8 @@ async def process_workqueue(workqueue: Workqueue):
                 update_item_data(
                     data,
                     status="Completed",
-                    status_code="Advis er nu behandlet" 
+                    status_code="Advis er nu behandlet",
+                    item=item 
                 )
                 
                 # Hvis alt er OK, så bruges status fra item data. Hvis intet i item data så bliver message blot "Completed"
